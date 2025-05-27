@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
+import json
+import os
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -102,6 +104,62 @@ def load_pricing_data():
         return df
     except:
         return None
+
+# Funkcie pre ukladanie a načítavanie projektov
+def save_project(project_data):
+    """Uloženie projektu do JSON súboru"""
+    projects_file = "saved_projects.json"
+    
+    # Načítanie existujúcich projektov
+    if os.path.exists(projects_file):
+        try:
+            with open(projects_file, 'r', encoding='utf-8') as f:
+                projects = json.load(f)
+        except:
+            projects = []
+    else:
+        projects = []
+    
+    # Pridanie nového projektu
+    project_data['datum_ulozenia'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    projects.append(project_data)
+    
+    # Uloženie späť do súboru
+    try:
+        with open(projects_file, 'w', encoding='utf-8') as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+        return True
+    except:
+        return False
+
+def load_projects():
+    """Načítanie uložených projektov"""
+    projects_file = "saved_projects.json"
+    
+    if os.path.exists(projects_file):
+        try:
+            with open(projects_file, 'r', encoding='utf-8') as f:
+                projects = json.load(f)
+            return projects
+        except:
+            return []
+    return []
+
+def delete_project(project_index):
+    """Vymazanie projektu"""
+    projects_file = "saved_projects.json"
+    projects = load_projects()
+    
+    if 0 <= project_index < len(projects):
+        projects.pop(project_index)
+        
+        try:
+            with open(projects_file, 'w', encoding='utf-8') as f:
+                json.dump(projects, f, ensure_ascii=False, indent=2)
+            return True
+        except:
+            return False
+    return False
 
 def create_pdf_with_utf8(nazov_projektu, zakaznik, datum, pocet_pismen, vyska_pismen, material, 
                         zakladna_cena, celkova_cena, lakovanie, foliovanie, osvetlenie, 
@@ -378,6 +436,114 @@ if pricing_df is None:
     st.error("❌ Nepodarilo sa načítať cenové dáta z Excel súboru!")
     st.stop()
 
+# Funkcie pre callback
+def load_selected_project():
+    """Callback funkcia pre načítanie projektu"""
+    if 'selected_project_index' in st.session_state and st.session_state.selected_project_index is not None:
+        saved_projects = load_projects()
+        if saved_projects and st.session_state.selected_project_index < len(saved_projects):
+            selected_project = saved_projects[st.session_state.selected_project_index]
+            
+            # Nastavenie hodnôt do session state
+            st.session_state.nazov_projektu = selected_project['nazov_projektu']
+            st.session_state.zakaznik = selected_project['zakaznik']
+            
+            # Nastavenie dátumu
+            try:
+                st.session_state.datum = datetime.strptime(selected_project['datum'], '%Y-%m-%d').date()
+            except:
+                st.session_state.datum = datetime.now().date()
+            
+            # Nastavenie výšky písmen
+            vysky_options = ["do 20cm", "do 30cm", "do 40cm", "do 50cm", "do 60cm", 
+                           "do 70cm", "do 80cm", "do 90cm", "do 100cm", "do 150cm"]
+            if selected_project['vyska_pismen'] in vysky_options:
+                st.session_state.vyska_pismen = selected_project['vyska_pismen']
+            
+            # Nastavenie ostatných polí
+            st.session_state.pocet_pismen = selected_project.get('pocet_pismen', 5)
+            
+            # Nastavenie materiálu
+            material_options = ["10mm PVC", "5mm PLEXI"]
+            if selected_project['material'] in material_options:
+                st.session_state.material = selected_project['material']
+            
+            # Nastavenie checkboxov
+            st.session_state.osvetlenie = selected_project.get('osvetlenie', False)
+            st.session_state.montaz = selected_project.get('montaz', False)
+            st.session_state.lakovanie = selected_project.get('lakovanie', False)
+            st.session_state.foliovanie = selected_project.get('foliovanie', False)
+            st.session_state.doprava = selected_project.get('doprava', False)
+            st.session_state.navrh = selected_project.get('navrh', False)
+            
+            # Nastavenie poznámok
+            st.session_state.poznamky = selected_project.get('poznamky', '')
+
+def clear_form():
+    """Callback funkcia pre vyčistenie formulára"""
+    # Vyčistenie všetkých session state hodnôt
+    for key in ['nazov_projektu', 'zakaznik', 'vyska_pismen', 'pocet_pismen', 
+               'material', 'osvetlenie', 'montaz', 'lakovanie', 'foliovanie', 
+               'doprava', 'navrh', 'poznamky']:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+    # Nastavenie základných hodnôt
+    st.session_state.pocet_pismen = 5
+    st.session_state.datum = datetime.now().date()
+
+# Sekcia pre načítavanie projektov (pred formulárom)
+st.header("💾 Správa projektov")
+
+col_load, col_clear, col_save = st.columns(3)
+
+with col_load:
+    st.subheader("📂 Načítať projekt")
+    
+    # Načítanie uložených projektov
+    saved_projects = load_projects()
+    
+    if saved_projects:
+        # Vytvorenie zoznamu projektov pre selectbox
+        project_options = []
+        for i, project in enumerate(saved_projects):
+            project_name = f"{project['nazov_projektu']} - {project['zakaznik']} ({project['datum_ulozenia']})"
+            project_options.append(project_name)
+        
+        selected_project_index = st.selectbox(
+            "Vyberte projekt na načítanie:",
+            range(len(project_options)),
+            format_func=lambda x: project_options[x],
+            key="selected_project_index"
+        )
+        
+        col_load_btn, col_delete_btn = st.columns(2)
+        
+        with col_load_btn:
+            if st.button("📂 Načítať projekt", type="secondary", on_click=load_selected_project):
+                st.success(f"✅ Projekt bol načítaný!")
+        
+        with col_delete_btn:
+            if st.button("🗑️ Vymazať projekt", type="secondary"):
+                if delete_project(selected_project_index):
+                    st.success("✅ Projekt bol vymazaný!")
+                    st.rerun()
+                else:
+                    st.error("❌ Chyba pri mazaní projektu!")
+    else:
+        st.info("📝 Zatiaľ nemáte uložené žiadne projekty.")
+
+with col_clear:
+    st.subheader("🧹 Vyčistiť formulár")
+    if st.button("🧹 Vyčistiť všetky polia", type="secondary", on_click=clear_form):
+        st.success("✅ Formulár bol vyčistený!")
+
+with col_save:
+    st.subheader("💾 Uložiť projekt")
+    st.info("👇 Vyplňte formulár a potom uložte projekt nižšie")
+
+st.markdown("---")
+
 # Hlavný formulár
 col1, col2 = st.columns([2, 1])
 
@@ -386,9 +552,9 @@ with col1:
     
     # Základné údaje
     st.subheader("Základné údaje")
-    nazov_projektu = st.text_input("Názov projektu")
-    zakaznik = st.text_input("Zákazník")
-    datum = st.date_input("Dátum", datetime.now())
+    nazov_projektu = st.text_input("Názov projektu", key="nazov_projektu")
+    zakaznik = st.text_input("Zákazník", key="zakaznik")
+    datum = st.date_input("Dátum", datetime.now(), key="datum")
     
     # Parametre písmen
     st.subheader("Parametre písmen")
@@ -397,36 +563,38 @@ with col1:
     vyska_pismen = st.selectbox(
         "Výška písmen",
         ["do 20cm", "do 30cm", "do 40cm", "do 50cm", "do 60cm", 
-         "do 70cm", "do 80cm", "do 90cm", "do 100cm", "do 150cm"]
+         "do 70cm", "do 80cm", "do 90cm", "do 100cm", "do 150cm"],
+        key="vyska_pismen"
     )
     
     # Počet písmen
-    pocet_pismen = st.number_input("Počet písmen", min_value=1, value=5, step=1)
+    pocet_pismen = st.number_input("Počet písmen", min_value=1, value=5, step=1, key="pocet_pismen")
     
     # Materiál
     material = st.selectbox(
         "Materiál",
-        ["10mm PVC", "5mm PLEXI"]
+        ["10mm PVC", "5mm PLEXI"],
+        key="material"
     )
     
     # Osvetlenie
-    osvetlenie = st.checkbox("LED osvetlenie")
+    osvetlenie = st.checkbox("LED osvetlenie", key="osvetlenie")
     
     # Montáž
-    montaz = st.checkbox("Montáž a inštalácia")
+    montaz = st.checkbox("Montáž a inštalácia", key="montaz")
     
     # Dodatočné služby
     st.subheader("Dodatočné služby")
     col_dod1, col_dod2 = st.columns(2)
     with col_dod1:
-        lakovanie = st.checkbox("Lakovanie")
-        foliovanie = st.checkbox("Fóliovanie")
+        lakovanie = st.checkbox("Lakovanie", key="lakovanie")
+        foliovanie = st.checkbox("Fóliovanie", key="foliovanie")
     with col_dod2:
-        doprava = st.checkbox("Doprava")
-        navrh = st.checkbox("Grafický návrh")
+        doprava = st.checkbox("Doprava", key="doprava")
+        navrh = st.checkbox("Grafický návrh", key="navrh")
     
     # Poznámky
-    poznamky = st.text_area("Poznámky")
+    poznamky = st.text_area("Poznámky", key="poznamky")
 
 with col2:
     st.header("Kalkulácia")
@@ -559,6 +727,36 @@ if st.button("📄 Generovať PDF ponuku", type="primary"):
         st.success("PDF ponuka bola vygenerovaná!")
     else:
         st.error("Vyplňte prosím názov projektu a zákazníka!")
+
+# Tlačidlo na uloženie projektu
+st.markdown("---")
+if st.button("💾 Uložiť aktuálny projekt", type="secondary"):
+    if nazov_projektu and zakaznik:
+        # Vytvorenie dát projektu
+        project_data = {
+            'nazov_projektu': nazov_projektu,
+            'zakaznik': zakaznik,
+            'datum': datum.strftime('%Y-%m-%d'),
+            'vyska_pismen': vyska_pismen,
+            'pocet_pismen': pocet_pismen,
+            'material': material,
+            'osvetlenie': osvetlenie,
+            'montaz': montaz,
+            'lakovanie': lakovanie,
+            'foliovanie': foliovanie,
+            'doprava': doprava,
+            'navrh': navrh,
+            'poznamky': poznamky,
+            'celkova_cena': celkova_cena,
+            'zakladna_cena': zakladna_cena
+        }
+        
+        if save_project(project_data):
+            st.success(f"✅ Projekt '{nazov_projektu}' bol úspešne uložený!")
+        else:
+            st.error("❌ Chyba pri ukladaní projektu!")
+    else:
+        st.error("❌ Vyplňte prosím názov projektu a zákazníka!")
 
 # Zobrazenie cenníka
 with st.expander("📊 Cenník kazetových 3D písmen"):
