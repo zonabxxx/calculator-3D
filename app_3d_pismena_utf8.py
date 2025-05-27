@@ -19,6 +19,80 @@ st.set_page_config(
     layout="wide"
 )
 
+# CSS štýlovanie pre lepšiu viditeľnosť vstupných polí
+st.markdown("""
+<style>
+    /* Štýlovanie pre selectbox */
+    .stSelectbox > div > div > div {
+        background-color: white !important;
+        border: 2px solid #1f77b4 !important;
+        border-radius: 5px !important;
+    }
+    
+    /* Štýlovanie pre text input */
+    .stTextInput > div > div > input {
+        background-color: white !important;
+        border: 2px solid #1f77b4 !important;
+        border-radius: 5px !important;
+    }
+    
+    /* Štýlovanie pre number input */
+    .stNumberInput > div > div > input {
+        background-color: white !important;
+        border: 2px solid #1f77b4 !important;
+        border-radius: 5px !important;
+    }
+    
+    /* Štýlovanie pre date input */
+    .stDateInput > div > div > input {
+        background-color: white !important;
+        border: 2px solid #1f77b4 !important;
+        border-radius: 5px !important;
+    }
+    
+    /* Štýlovanie pre checkbox */
+    .stCheckbox > label {
+        background-color: #f0f2f6 !important;
+        padding: 10px !important;
+        border-radius: 5px !important;
+        border: 1px solid #ddd !important;
+        margin: 5px 0 !important;
+    }
+    
+    /* Štýlovanie pre labels */
+    .stSelectbox > label, .stTextInput > label, .stNumberInput > label, .stDateInput > label {
+        font-weight: bold !important;
+        color: #1f77b4 !important;
+        font-size: 16px !important;
+    }
+    
+    /* Štýlovanie pre hlavný nadpis */
+    h1 {
+        color: #1f77b4 !important;
+        border-bottom: 3px solid #1f77b4 !important;
+        padding-bottom: 10px !important;
+    }
+    
+    /* Štýlovanie pre sekcie */
+    h2 {
+        color: #2e8b57 !important;
+        background-color: #f0f8f0 !important;
+        padding: 10px !important;
+        border-radius: 5px !important;
+        border-left: 5px solid #2e8b57 !important;
+    }
+    
+    /* Štýlovanie pre výsledky */
+    .metric-container {
+        background-color: #e6f3ff !important;
+        padding: 15px !important;
+        border-radius: 10px !important;
+        border: 2px solid #1f77b4 !important;
+        margin: 10px 0 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Načítanie dát z Excel súboru
 @st.cache_data
 def load_pricing_data():
@@ -384,23 +458,27 @@ with col2:
         # Základná cena za všetky písmená
         zakladna_cena = predajna_cena_na_pismeno * pocet_pismen
         
-        st.metric("Počet písmen", pocet_pismen)
-        st.metric("Výška písmen", vyska_pismen)
-        st.metric("Cena za 1 písmeno", f"{predajna_cena_na_pismeno:.2f} €")
+        st.markdown("### 📋 Základné informácie")
+        st.markdown(f"<div class='metric-container'>🔢 Počet písmen: <strong>{pocet_pismen}</strong></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-container'>📏 Výška písmen: <strong>{vyska_pismen}</strong></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-container'>💰 Cena za 1 písmeno: <strong>{predajna_cena_na_pismeno:.2f} €</strong></div>", unsafe_allow_html=True)
         
         # Prirážky
         prirazky = 0
         osvetlenie_cena = 0
         
+        # Kontajner pre prirážky
+        st.markdown("### 💰 Prirážky a služby")
+        
         if lakovanie:
             prirazka_lakovanie = zakladna_cena * 0.15  # 15% za lakovanie
             prirazky += prirazka_lakovanie
-            st.write(f"Lakovanie (15%): {prirazka_lakovanie:.2f} €")
+            st.markdown(f"<div class='metric-container'>🎨 Lakovanie (15%): <strong>{prirazka_lakovanie:.2f} €</strong></div>", unsafe_allow_html=True)
         
         if foliovanie:
             prirazka_foliovanie = zakladna_cena * 0.20  # 20% za fóliovanie
             prirazky += prirazka_foliovanie
-            st.write(f"Fóliovanie (20%): {prirazka_foliovanie:.2f} €")
+            st.markdown(f"<div class='metric-container'>📄 Fóliovanie (20%): <strong>{prirazka_foliovanie:.2f} €</strong></div>", unsafe_allow_html=True)
         
         if osvetlenie:
             # LED moduly a zdroj z Excel tabuľky
@@ -408,38 +486,51 @@ with col2:
             led_zdroj_cena = pricing_df.loc[5, stlpec_vysky] * pocet_pismen   # LED zdroj
             osvetlenie_cena = led_modul_cena + led_zdroj_cena
             prirazky += osvetlenie_cena
-            st.write(f"LED osvetlenie: {osvetlenie_cena:.2f} €")
+            st.markdown(f"<div class='metric-container'>💡 LED osvetlenie: <strong>{osvetlenie_cena:.2f} €</strong></div>", unsafe_allow_html=True)
         
         if montaz:
             montaz_cena = zakladna_cena * 0.25  # 25% za montáž
             prirazky += montaz_cena
-            st.write(f"Montáž (25%): {montaz_cena:.2f} €")
+            st.markdown(f"<div class='metric-container'>🔧 Montáž (25%): <strong>{montaz_cena:.2f} €</strong></div>", unsafe_allow_html=True)
         
         if doprava:
             doprava_cena = 50  # Fixná cena za dopravu
             prirazky += doprava_cena
-            st.write(f"Doprava: {doprava_cena:.2f} €")
+            st.markdown(f"<div class='metric-container'>🚚 Doprava: <strong>{doprava_cena:.2f} €</strong></div>", unsafe_allow_html=True)
         
         if navrh:
             navrh_cena = 100  # Fixná cena za návrh
             prirazky += navrh_cena
-            st.write(f"Grafický návrh: {navrh_cena:.2f} €")
+            st.markdown(f"<div class='metric-container'>🎨 Grafický návrh: <strong>{navrh_cena:.2f} €</strong></div>", unsafe_allow_html=True)
         
         # Celková cena
         celkova_cena = zakladna_cena + prirazky
         
         st.markdown("---")
-        st.subheader("Rozpis cien")
-        st.write(f"Základná cena ({pocet_pismen}x {predajna_cena_na_pismeno:.2f}€): {zakladna_cena:.2f} €")
+        st.subheader("📊 Rozpis cien")
+        st.markdown(f"<div class='metric-container'>📝 Základná cena ({pocet_pismen}x {predajna_cena_na_pismeno:.2f}€): <strong>{zakladna_cena:.2f} €</strong></div>", unsafe_allow_html=True)
         if prirazky > 0:
-            st.write(f"Prirážky celkom: {prirazky:.2f} €")
+            st.markdown(f"<div class='metric-container'>➕ Prirážky celkom: <strong>{prirazky:.2f} €</strong></div>", unsafe_allow_html=True)
         
         st.markdown("---")
-        st.metric("**CELKOVÁ CENA**", f"{celkova_cena:.2f} €")
+        # Veľký kontajner pre celkovú cenu
+        st.markdown(f"""
+        <div style='background: linear-gradient(90deg, #1f77b4, #2e8b57); 
+                    color: white; 
+                    padding: 20px; 
+                    border-radius: 15px; 
+                    text-align: center; 
+                    font-size: 24px; 
+                    font-weight: bold; 
+                    margin: 20px 0;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);'>
+            💰 CELKOVÁ CENA: {celkova_cena:.2f} €
+        </div>
+        """, unsafe_allow_html=True)
         
         # Marža z Excel súboru
         marza_excel = pricing_df.loc[19, stlpec_vysky] * 100  # Riadok 19 = marža v desatinnom tvare
-        st.metric("Marža (z Excel)", f"{marza_excel:.1f}%")
+        st.markdown(f"<div class='metric-container'>📈 Marža (z Excel): <strong>{marza_excel:.1f}%</strong></div>", unsafe_allow_html=True)
         
     except Exception as e:
         st.error(f"Chyba pri výpočte: {e}")
