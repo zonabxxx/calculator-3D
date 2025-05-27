@@ -463,10 +463,7 @@ def load_selected_project():
             # Nastavenie ostatných polí
             st.session_state.pocet_pismen = selected_project.get('pocet_pismen', 5)
             
-            # Nastavenie materiálu
-            material_options = ["10mm PVC", "5mm PLEXI"]
-            if selected_project['material'] in material_options:
-                st.session_state.material = selected_project['material']
+            # Materiál je teraz fixný, takže ho nemusíme nastavovať
             
             # Nastavenie checkboxov
             st.session_state.osvetlenie = selected_project.get('osvetlenie', False)
@@ -481,9 +478,9 @@ def load_selected_project():
 
 def clear_form():
     """Callback funkcia pre vyčistenie formulára"""
-    # Vyčistenie všetkých session state hodnôt
+    # Vyčistenie všetkých session state hodnôt (bez materiálu)
     for key in ['nazov_projektu', 'zakaznik', 'vyska_pismen', 'pocet_pismen', 
-               'material', 'osvetlenie', 'montaz', 'lakovanie', 'foliovanie', 
+               'osvetlenie', 'montaz', 'lakovanie', 'foliovanie', 
                'doprava', 'navrh', 'poznamky']:
         if key in st.session_state:
             del st.session_state[key]
@@ -571,11 +568,11 @@ with col1:
     pocet_pismen = st.number_input("Počet písmen", min_value=1, value=5, step=1, key="pocet_pismen")
     
     # Materiál
-    material = st.selectbox(
-        "Materiál",
-        ["10mm PVC", "5mm PLEXI"],
-        key="material"
-    )
+    st.markdown("**Materiál použitý pri výrobe:**")
+    st.info("🔧 **10mm PVC** + **5mm PLEXI** (štandardná kombinácia)")
+    
+    # Pre účely ukladania nastavíme materiál ako kombináciu
+    material = "10mm PVC + 5mm PLEXI"
     
     # Osvetlenie
     osvetlenie = st.checkbox("LED osvetlenie", key="osvetlenie")
